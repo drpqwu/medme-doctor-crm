@@ -7,9 +7,14 @@ export async function GET(req: NextRequest) {
   try {
     requireAdmin(req)
     const db = getDb()
-    const users = db.prepare(
-      'SELECT id, username, display_name, role, created_at, updated_at FROM users ORDER BY created_at DESC'
-    ).all()
+    const users = db.getAllUsers().map(u => ({
+      id: u.id,
+      username: u.username,
+      display_name: u.display_name,
+      role: u.role,
+      created_at: u.created_at,
+      updated_at: u.updated_at,
+    }))
     return Response.json({ users })
   } catch (error: any) {
     return authErrorResponse(error)
@@ -23,28 +28,40 @@ export async function POST(req: NextRequest) {
     const { username, password, display_name, role } = await req.json()
 
     if (!username?.trim() || !password || !display_name?.trim()) {
-      return Response.json({ error: '帳號、密碼、顯示名稱為必填' }, { status: 400 })
+      return Response.json(
+        { error: '帳號、密碼、顯示名稱為必填' },
+        { status: 400 }
+      )
     }
 
     if (!['admin', 'member'].includes(role)) {
       return Response.json({ error: '無效的角色' }, { status: 400 })
     }
 
-    const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username.trim())
-    if (existing) {
+    if (db.getUserByUsername(username.trim())) {
       return Response.json({ error: '帳號已存在' }, { status: 409 })
     }
 
     const hash = await bcrypt.hash(password, 10)
-    const result = db.prepare(`
-      INSERT INTO users (username, password_hash, display_name, role) VALUES (?, ?, ?, ?)
-    `).run(username.trim(), hash, display_name.trim(), role)
+    const user = db.createUser({
+      username: username.trim(),
+      password_hash: hash,
+      display_name: display_name.trim(),
+      role,
+    })
 
-    const user = db.prepare(
-      'SELECT id, username, display_name, role, created_at FROM users WHERE id = ?'
-    ).get(result.lastInsertRowid)
-
-    return Response.json({ user }, { status: 201 })
+    return Response.json(
+      {
+        user: {
+          id: user.id,
+          username: user.username,
+          display_name: user.display_name,
+          role: user.role,
+          created_at: user.created_at,
+        },
+      },
+      { status: 201 }
+    )
   } catch (error: any) {
     return authErrorResponse(error)
   }

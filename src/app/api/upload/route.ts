@@ -22,8 +22,8 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: '缺少 visit_id' }, { status: 400 })
     }
 
-    const visit = db.prepare('SELECT id FROM visits WHERE id = ?').get(parseInt(visitId as string))
-    if (!visit) {
+    const visitIdNum = parseInt(visitId as string)
+    if (!db.findVisit(visitIdNum)) {
       return Response.json({ error: '拜訪紀錄不存在' }, { status: 404 })
     }
 
@@ -39,12 +39,15 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer())
     fs.writeFileSync(filePath, buffer)
 
-    const result = db.prepare(`
-      INSERT INTO attachments (visit_id, filename, file_path, file_type, file_size, uploaded_by)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(parseInt(visitId as string), file.name, `/uploads/${safeName}`, file.type, file.size, payload.userId)
+    const attachment = db.createAttachment({
+      visit_id: visitIdNum,
+      filename: file.name,
+      file_path: `/uploads/${safeName}`,
+      file_type: file.type || null,
+      file_size: file.size,
+      uploaded_by: payload.userId,
+    })
 
-    const attachment = db.prepare('SELECT * FROM attachments WHERE id = ?').get(result.lastInsertRowid)
     return Response.json({ attachment }, { status: 201 })
   } catch (error: any) {
     return authErrorResponse(error)

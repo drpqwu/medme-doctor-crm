@@ -12,9 +12,7 @@ export async function POST(req: NextRequest) {
     }
 
     const db = getDb()
-    const user = db
-      .prepare('SELECT * FROM users WHERE username = ?')
-      .get(username) as any
+    const user = db.getUserByUsername(username)
 
     if (!user) {
       return Response.json({ error: '帳號或密碼錯誤' }, { status: 401 })
