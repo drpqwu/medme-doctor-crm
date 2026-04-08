@@ -1,17 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals = [...(config.externals || []), 'better-sqlite3']
-    }
-    return config
-  },
-  images: {
-    domains: ['localhost'],
-  },
-}
-/** @type {import('next').NextConfig} */
-const nextConfig = {
     typescript: {
           ignoreBuildErrors: true,
     },
@@ -29,5 +17,4 @@ const nextConfig = {
     },
 }
 
-module.exports = nextConfig
 module.exports = nextConfig
